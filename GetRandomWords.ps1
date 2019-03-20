@@ -93,7 +93,8 @@ Function DiscoverPopularWords
         $NumberOfWords = 10,
         $MinSyllables = 2,
         $MaxSyllables = 10,
-        $MinWordLength = 6
+        $MinWordLength = 6,
+        $MinPopularity = 1000
     )
 
     # Create Internet Explorer object
@@ -116,7 +117,7 @@ Function DiscoverPopularWords
         
         #Write-Host ("{0} --> {1}" -F $word, $countint)
 
-        if($countint -gt 1000)
+        if($countint -ge $MinPopularity)
         {
             #Write-Host ("{0} --> {1}" -F $word, $countint)
             $PopularWords[$word] = $countint
