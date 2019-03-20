@@ -9,3 +9,6 @@ List of the top 5,000 masks created from all publicly available password dumps, 
 
 ### Hashcat-Stuffs/Rules/RuleList.rule
 List of combined rules from all publicly available rule lists out there, plus some extra rules from a very long session of plugging random rules in. I believe they are sorted by occurrence, which is heavily influenced by what rules worked while cracking a very large set of hashes; rules were recorded in a log each time they individually lead to a successful match. These rules and the randomly generated ones were run on a combined password list of all publicly available password dumps.
+
+### Hashcat-Stuffs/GetRandomWords.ps1
+PowerShell script that divines words from the ether. Generates random words and then runs them through Bing, to get a popularity score. Anything with 1000 or more hits is added to the final output list. I wrote this to solve the problem of running out of source words while cracking. It's not very efficient and might get you blacklisted by Bing, but it netted me a few cracked hashes when I was out of ideas. It's also based off someone else's scripts, but I can't remember who...
