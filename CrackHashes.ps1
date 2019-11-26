@@ -250,17 +250,17 @@ function RunRandomRules
 # Do basic rule deviation on all cracked passwords.
 $CrackedPasswords = RunRuleAttacks -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
 
-# Do mask attacks.
-$CrackedPasswords = RunMaskAttacks -Masks $MaskLists
-
-# Do basic rule deviation on all cracked passwords from the previous mask attacks.
-$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
-
 # Do append/prepend attack on word list and cracked passwords.
 (Get-CrackedPasswords -CrackedFile $CrackedList) | Out-File -Path $TemporaryWordList -Encoding ascii
 $CrackedPasswords = RunPrependAppendAttack -Mask "?a?a?a?a?a" -Increment -WordListPaths @($WordList, $TemporaryWordList)
 
 # Do basic rule deviation on all cracked passwords from the previous append/prepend attacks.
+$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
+
+# Do mask attacks.
+$CrackedPasswords = RunMaskAttacks -Masks $MaskLists
+
+# Do basic rule deviation on all cracked passwords from the previous mask attacks.
 $CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
 
 # Do incremental bruteforce of the 8 character keyspace.
