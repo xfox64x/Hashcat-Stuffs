@@ -12,3 +12,6 @@ List of combined rules from all publicly available rule lists out there, plus so
 
 ### Hashcat-Stuffs/GetRandomWords.ps1
 PowerShell script that divines words from the ether. Generates random words and then runs them through Bing, to get a popularity score. Anything with 1000 or more hits is added to the final output list. I wrote this to solve the problem of running out of source words while cracking. It's not very efficient and might get you blacklisted by Bing, but it netted me a few cracked hashes when I was out of ideas. It's also based off someone else's scripts, but I can't remember who...
+
+### Hashcat-Stuffs/CrackHashes.ps1
+PowerShell script that does work. Fill in all the variables at the top, and it should provide enough work.
