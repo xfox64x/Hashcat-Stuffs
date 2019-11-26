@@ -37,18 +37,20 @@ function Convert-HexStringToByteArray
 function Get-CrackedPasswords
 {
     param (
-        [String] $CrackedFile
+        [String] $CrackedFile = "",
+        $RawLines = @()
     )
-    if(!(Test-Path $CrackedFile)) {
-        return @()
+    if($RawLines.Count -eq 0)
+    {
+        if(!(Test-Path $CrackedFile)) {
+            return @()
+        }
+        $StreamReader = New-Object System.IO.StreamReader($CrackedFile, $true)
+        while($null -ne ($line = $StreamReader.ReadLine())) {
+            $RawLines += $line
+        }
+        $StreamReader.Close()
     }
-    
-    $RawLines = @()
-    $StreamReader = New-Object System.IO.StreamReader($CrackedFile, $true)
-    while($null -ne ($line = $StreamReader.ReadLine())) {
-        $RawLines += $line
-    }
-    $StreamReader.Close()
     $CrackedHexRe = [System.Text.RegularExpressions.Regex]::new("\`$HEX\[(?<hexValue>[a-fA-F0-9]+)\]", [System.Text.RegularExpressions.RegexOptions]::ExplicitCapture -bor [System.Text.RegularExpressions.RegexOptions]::Compiled)
     $ProcessedLines = @()
     foreach($RawLine in $RawLines) {
@@ -67,38 +69,138 @@ function Get-CrackedPasswords
 }
 
 # Runs rules on the cracked passwords in hopes of finding slight alterations.
-function CrackDeviations
+function RunRuleAttacks
 {
     param(
-        $CrackedPasswords
+        $Words = @()
     )
-    # Repeatedly run the rules against the cracked passwords until no additional cracks happen.
+    $CrackedPasswords = @()
+    if($Words.Count -eq 0) {
+        return $CrackedPasswords
+    }
     
-    $CrackedPasswords | Out-File -Path $TemporaryWordList -Encoding ascii
-
+    # Repeatedly run the rules against the cracked passwords until no additional cracks happen.
+    $Words | Out-File -Path $TemporaryWordList -Encoding ascii
+    
     # Each loop becomes a danger zone, where the results of running the rules on the cracked passwords aren't written
     # to th main cracked hashes file until the very end of the loop. It would be possible, for example, to stop this 
     # script after the first hashcat command heas finished, where any results would only exist in the temporary cracked 
-    # list. Just be aware of this or else you might end up 
+    # list. Just be aware of this or else you might end up overwriting some good cracks.
+    
+    Clear-Content -Path $TemporaryCrackedList
     while($CrackedPasswords.Count -gt 0) {
-        # Run the supplied wordlist with the supplied rules against the hashes.
+        # Run the cracked passwords with the supplied rules against the hashes.
         & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $TemporaryWordList
 
-        # Run the supplied wordlist with the supplied rules, squared, against the hashes.
+        # Run the cracked passwords with the supplied rules, squared, against the hashes.
         & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $TemporaryWordList
 
         # Write any cracked hashes to the main cracked hashes list.
         (Get-Content $TemporaryCrackedList) | Out-File -Path $CrackedList -Encoding ascii -Append
 
-        # Update the temporary wordlist with any cracked passwords from this iteration of the while loop.
-        $CrackedPasswords = Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
+        # Get a list of the cracked passwords from the previous hashcat run.
+        $TemporaryCrackedContent = Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
+
+        $CrackedPasswords += $TemporaryCrackedContent
 
         # Writes out cracked passwords to the wordlist, clearing previous content.
-        $CrackedPasswords | Out-File -Path $TemporaryWordList -Encoding ascii
+        $TemporaryCrackedContent | Out-File -Path $TemporaryWordList -Encoding ascii
 
         # Clear the content of the temporary cracked hash results since they've been recorded.
         Clear-Content -Path $TemporaryCrackedList
     }
+    return $CrackedPasswords
+}
+
+# Runs brutal masks against the hashes.
+function RunMaskAttacks
+{
+    param(
+        $Masks = @()
+    )
+    $CrackedPasswords = @()
+    if($Masks.Count -eq 0) {
+        return $CrackedPasswords
+    }
+    Clear-Content -Path $TemporaryCrackedList
+    foreach($MaskList in $MaskLists) {
+        & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O --force -m $HashType $HashList $MaskList
+        
+        # Write any cracked hashes to the main cracked hashes list.
+        (Get-Content $TemporaryCrackedList) | Out-File -Path $CrackedList -Encoding ascii -Append
+        
+        # Get a list of the cracked passwords from the previous hashcat run.
+        $CrackedPasswords += Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
+        
+        # Clear the temporary cracked hashes file.
+        Clear-Content -Path $TemporaryCrackedList
+    }
+    return $CrackedPasswords
+}
+
+# Runs a bruteforce attack.
+function RunBruteForceAttack
+{
+    param(
+        [String] $Mask = "?a?a?a?a?a?a?a?a",
+        [switch] $Increment = $false
+    )
+    $CrackedPasswords = @()
+    if($Masks.Count -eq 0) {
+        return $CrackedPasswords
+    }
+    Clear-Content -Path $TemporaryCrackedList
+    if($Increment -eq $true) {    
+        & $HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --increment --remove -a 3 -O -m $HashType $HashList $Mask
+    }
+    else {
+        & $HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O -m $HashType $HashList $Mask
+    }
+    # Write any cracked hashes to the main cracked hashes list.
+    (Get-Content $TemporaryCrackedList) | Out-File -Path $CrackedList -Encoding ascii -Append
+
+    # Get a list of the cracked passwords from the previous hashcat run.
+    $CrackedPasswords = Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
+
+    # Clear the temporary cracked hashes file.
+    Clear-Content -Path $TemporaryCrackedList
+
+    return $CrackedPasswords
+}
+
+# Runs a prepend/append attack.
+function RunPrependAppendAttack
+{
+    param(
+        [String] $Mask = "?a?a?a?a?a",
+        [switch] $Increment = $false,
+        $WordListPaths = @()
+    )
+    $CrackedPasswords = @()
+    if($$WordListPaths.Count -eq 0) {
+        return $CrackedPasswords
+    }
+    Clear-Content -Path $TemporaryCrackedList
+    foreach($WordListPath in $WordListPaths) {
+        if($Increment -eq $true) {
+            & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --increment --remove -a 6 -O -m $HashType $HashList $WordListPath $Mask
+            & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --increment --remove -a 7 -O -m $HashType $HashList $Mask $WordListPath
+        }
+        else {
+            & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 6 -O -m $HashType $HashList $WordListPath $Mask
+            & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 7 -O -m $HashType $HashList $Mask $WordListPath
+        }
+        
+        # Write any cracked hashes to the main cracked hashes list.
+        (Get-Content $TemporaryCrackedList) | Out-File -Path $CrackedList -Encoding ascii -Append
+        
+        # Get a list of the cracked passwords from the previous hashcat run.
+        $CrackedPasswords += Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
+        
+        # Clear the temporary cracked hashes file.
+        Clear-Content -Path $TemporaryCrackedList
+    }
+    return $CrackedPasswords
 }
 
 # Runs rules on the cracked passwords in hopes of finding slight alterations.
@@ -146,34 +248,24 @@ function RunRandomRules
 # Run the supplied wordlist with the supplied rules, squared, against the hashes.
 & $HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $WordList
 
-# Do deviation/random-rules combo.
-while($true) {
-    CrackDeviations -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
-    if( (RunRandomRules -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList) -Iterations 1) -eq 0) {
-        break
-    }
-}
+# Do basic rule deviation on all cracked passwords.
+$CrackedPasswords = RunRuleAttacks -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
 
 # Do mask attacks.
-foreach($MaskList in $MaskLists) {
-    & $HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O --force -m $HashType $HashList $MaskList
-}
+$CrackedPasswords = RunMaskAttacks -Masks $MaskLists
 
-# Do deviation/random-rules combo.
-while($true) {
-    CrackDeviations -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
-    if( (RunRandomRules -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList) -Iterations 1) -eq 0) {
-        break
-    }
-}
+# Do basic rule deviation on all cracked passwords from the previous mask attacks.
+$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
+
+# Do append/prepend attack on word list and cracked passwords.
+(Get-CrackedPasswords -CrackedFile $CrackedList) | Out-File -Path $TemporaryWordList -Encoding ascii
+$CrackedPasswords = RunPrependAppendAttack -Mask "?a?a?a?a?a" -Increment -WordListPaths @($WordList, $TemporaryWordList)
+
+# Do basic rule deviation on all cracked passwords from the previous append/prepend attacks.
+$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
 
 # Do incremental bruteforce of the 8 character keyspace.
-& $HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --increment --remove -a 3 -O -m $HashType $HashList ?a?a?a?a?a?a?a?a
+$CrackedPasswords = RunBruteForceAttack -Mask "?a?a?a?a?a?a?a?a" -Increment
 
-# Do deviation/random-rules combo.
-while($true) {
-    CrackDeviations -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
-    if( (RunRandomRules -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList) -Iterations 1) -eq 0) {
-        break
-    }
-}
+# Do basic rule deviation on all cracked passwords from the previous bruteforce attack.
+$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
