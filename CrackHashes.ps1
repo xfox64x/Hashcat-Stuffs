@@ -6,6 +6,8 @@ $HashcatBinary = "<Path to Hashcat binary>"
 $HashList = "<Path to appropriately formatted hashes>"
 $HashType = 1000
 $MaskLists = @("<Mask list paths>", "<Go here>")
+$PrinceProcessorBinary = "<Path to the PrinceProcessor binary>"
+$PrinceProcessorOutputFile = "<Path where PrinceProcessor should take a dump>"
 $RulesList = "<Path to Hashcat rules file>"
 $RulesLog = "<Path to log successful Hashcat rules>"
 $SessionName = "ntHashes"
@@ -250,6 +252,48 @@ function RunRandomRules
     return $HashesCracked
 }
 
+# Runs the princeprocessor on the supplied wordlist and then attempts to fill the harddrive.
+function RunPrinceProcessorAttack
+{
+    param(
+        [String] $WordListPath = ""    
+    )
+    $CrackedPasswords = @()
+    if(!Test-Path $WordListPath) {
+        return $CrackedPasswords
+    }
+    ClearContent -Path $TemporaryCrackedList
+    Invoke-Expression "$PrinceProcessorBinary --pw-max=16 --pw-min=8 --output-file=$PrinceProcessorOutputFile $WordListPath" | Out-Host
+
+    # Run straight wordlist against the hashes.
+    Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O -m $HashType $HashList $PrinceProcessorOutputFile" | Out-Host
+
+    # Write any cracked hashes to the main cracked hashes list.
+    (Get-Content $TemporaryCrackedList) | Out-File -FilePath $CrackedList -Encoding ascii -Append
+
+    # Get a list of the cracked passwords from the previous hashcat run.
+    $CrackedPasswords += Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
+        
+    # Clear the temporary cracked hashes file.
+    ClearContent -Path $TemporaryCrackedList
+
+    # Run the supplied wordlist with the supplied rules against the hashes.
+    Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $PrinceProcessorOutputFile" | Out-Host
+
+    # Write any cracked hashes to the main cracked hashes list.
+    (Get-Content $TemporaryCrackedList) | Out-File -FilePath $CrackedList -Encoding ascii -Append
+        
+    # Get a list of the cracked passwords from the previous hashcat run.
+    $CrackedPasswords += Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
+        
+    # Clear the temporary cracked hashes file.
+    ClearContent -Path $TemporaryCrackedList
+    
+    # Remove the probably gigantic pp file from disk.
+    Remove-Item -Path $PrinceProcessorOutputFile -Force
+    
+    return $CrackedPasswords
+}
 
 # Run straight wordlist against the hashes.
 Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O -m $HashType $HashList $WordList" | Out-Host
@@ -281,3 +325,7 @@ $CrackedPasswords = RunBruteForceAttack -Mask "?a?a?a?a?a?a?a?a" -Increment
 
 # Do basic rule deviation on all cracked passwords from the previous bruteforce attack.
 $CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
+
+# Run the PrinceProcessor on the cracked passwords, and then run basic and rules-based attacks.
+(Get-CrackedPasswords -CrackedFile $CrackedList) | Out-File -FilePath $TemporaryWordList -Encoding ascii
+RunPrinceProcessorAttack -WordListPath $TemporaryWordList
