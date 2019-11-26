@@ -3,12 +3,12 @@
 
 $CrackedList = "<Path to where you want any cracked hashes>"
 $HashcatBinary = "<Path to Hashcat binary>"
-$HashList = $HashcatHashOutputPath
-$HashType = 5600
+$HashList = "<Path to appropriately formatted hashes>"
+$HashType = 1000
 $MaskLists = @("<Mask list paths>", "<Go here>")
 $RulesList = "<Path to Hashcat rules file>"
 $RulesLog = "<Path to log successful Hashcat rules>"
-$SessionName = "NetNTLMv2Hashes"
+$SessionName = "ntHashes"
 $WordList = "<Path to wordlist>"
 
 $TemporaryWordList = "{}.temp" -F $WordList
@@ -23,7 +23,7 @@ function Convert-HexStringToByteArray
     $String = $String.ToLower() -replace '[^a-f0-9\\,x\-\:]',''
     $String = $String -replace '0x|\x|\-|,',':'
     $String = $String -replace '^:+|:+$|x|\',''
-    if($String.Length -eq 0) { ,@() ; return]
+    if($String.Length -eq 0) { ,@() ; return }
     if($String.Length -eq 1)
     { ,@([System.Convert]::ToByte($String,16)) }
     elseif(($String.Length % 2 -eq 0) -and ($String.IndexOf(":") -eq -1))
@@ -31,7 +31,7 @@ function Convert-HexStringToByteArray
     elseif($String.IndexOf(":") -ne -1)
     { ,@($String -split ':+' | foreach-object {[System.Convert]::ToByte($_,16)}) }
     else
-    { ,@() ]
+    { ,@() }
 }
 
 function Get-CrackedPasswords
