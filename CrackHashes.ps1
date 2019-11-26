@@ -20,9 +20,9 @@ function Convert-HexStringToByteArray
     Param(
         [Parameter(Mandatory=$True, ValueFromPipeline=$True)] [String] $String
     )
-    $String = $String.ToLower() -replace '[^a-f0-9\\,x\-\:]',''
+    $String = $String.ToLower() -replace '[^a-f0-9\\,x\-\:]',"
     $String = $String -replace '0x|\x|\-|,',':'
-    $String = $String -replace '^:+|:+$|x|\',''
+    $String = $String -replace '^:+|:+$|x|\',"
     if($String.Length -eq 0) { ,@() ; return }
     if($String.Length -eq 1)
     { ,@([System.Convert]::ToByte($String,16)) }
