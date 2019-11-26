@@ -11,8 +11,8 @@ $RulesLog = "<Path to log successful Hashcat rules>"
 $SessionName = "ntHashes"
 $WordList = "<Path to wordlist>"
 
-$TemporaryWordList = "{}.temp" -F $WordList
-$TemporaryCrackedList = "{}.temp" -F $CrackedList
+$TemporaryWordList = "{0}.temp" -F $WordList
+$TemporaryCrackedList = "{0}.temp" -F $CrackedList
 
 function Convert-HexStringToByteArray
 {
@@ -177,7 +177,7 @@ function RunPrependAppendAttack
         $WordListPaths = @()
     )
     $CrackedPasswords = @()
-    if($$WordListPaths.Count -eq 0) {
+    if($WordListPaths.Count -eq 0) {
         return $CrackedPasswords
     }
     Clear-Content -Path $TemporaryCrackedList
@@ -221,7 +221,6 @@ function RunRandomRules
     
         # Run random rules on the wordlist, limited to 7 days of run time.
         & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --generate-rules=1000000 --generate-rules-func-min=5 --runtime=604800 --generate-rules-func-max=25 --debug-mode=1 --debug-file=$RulesLog -m $HashType $HashList $WordList
-        }
 
         # Run random rules on the cracked passwords, limited to 7 days of run time.
         & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --generate-rules=1000000 --generate-rules-func-min=5 --runtime=604800 --generate-rules-func-max=25 --debug-mode=1 --debug-file=$RulesLog -m $HashType $HashList $TemporaryWordList
