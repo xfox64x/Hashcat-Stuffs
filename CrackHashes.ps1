@@ -14,6 +14,19 @@ $WordList = "<Path to wordlist>"
 $TemporaryWordList = "{0}.temp" -F $WordList
 $TemporaryCrackedList = "{0}.temp" -F $CrackedList
 
+function ClearContent
+{
+    param(
+        $Path
+    )
+    if(Test-Path $FilePath) {
+        Clear-Content -Path $Path -Force
+    }
+    else {
+        New-Item -ItemType file $Path
+    }
+}
+
 function Convert-HexStringToByteArray
 {
     [CmdletBinding()]
@@ -87,7 +100,7 @@ function RunRuleAttacks
     # script after the first hashcat command heas finished, where any results would only exist in the temporary cracked 
     # list. Just be aware of this or else you might end up overwriting some good cracks.
     
-    Clear-Content -Path $TemporaryCrackedList
+    ClearContent -Path $TemporaryCrackedList
     while($CrackedPasswords.Count -gt 0) {
         # Run the cracked passwords with the supplied rules against the hashes.
         & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $TemporaryWordList
@@ -107,7 +120,7 @@ function RunRuleAttacks
         $TemporaryCrackedContent | Out-File -FilePath $TemporaryWordList -Encoding ascii
 
         # Clear the content of the temporary cracked hash results since they've been recorded.
-        Clear-Content -Path $TemporaryCrackedList
+        ClearContent -Path $TemporaryCrackedList
     }
     return $CrackedPasswords
 }
@@ -122,7 +135,7 @@ function RunMaskAttacks
     if($Masks.Count -eq 0) {
         return $CrackedPasswords
     }
-    Clear-Content -Path $TemporaryCrackedList
+    ClearContent -Path $TemporaryCrackedList
     foreach($MaskList in $MaskLists) {
         & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O --force -m $HashType $HashList $MaskList
         
@@ -133,7 +146,7 @@ function RunMaskAttacks
         $CrackedPasswords += Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
         
         # Clear the temporary cracked hashes file.
-        Clear-Content -Path $TemporaryCrackedList
+        ClearContent -Path $TemporaryCrackedList
     }
     return $CrackedPasswords
 }
@@ -149,7 +162,7 @@ function RunBruteForceAttack
     if($Masks.Count -eq 0) {
         return $CrackedPasswords
     }
-    Clear-Content -Path $TemporaryCrackedList
+    ClearContent -Path $TemporaryCrackedList
     if($Increment -eq $true) {    
         & $HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --increment --remove -a 3 -O -m $HashType $HashList $Mask
     }
@@ -163,7 +176,7 @@ function RunBruteForceAttack
     $CrackedPasswords = Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
 
     # Clear the temporary cracked hashes file.
-    Clear-Content -Path $TemporaryCrackedList
+    ClearContent -Path $TemporaryCrackedList
 
     return $CrackedPasswords
 }
@@ -180,7 +193,7 @@ function RunPrependAppendAttack
     if($WordListPaths.Count -eq 0) {
         return $CrackedPasswords
     }
-    Clear-Content -Path $TemporaryCrackedList
+    ClearContent -Path $TemporaryCrackedList
     foreach($WordListPath in $WordListPaths) {
         if($Increment -eq $true) {
             & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --increment --remove -a 6 -O -m $HashType $HashList $WordListPath $Mask
@@ -198,7 +211,7 @@ function RunPrependAppendAttack
         $CrackedPasswords += Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
         
         # Clear the temporary cracked hashes file.
-        Clear-Content -Path $TemporaryCrackedList
+        ClearContent -Path $TemporaryCrackedList
     }
     return $CrackedPasswords
 }
@@ -217,7 +230,7 @@ function RunRandomRules
     for($i = 0; $i -lt $Iterations; $i++)
     {
         # Clear the temporary cracked hashes list, so we can gauge our progress.
-        Clear-Content -Path $TemporaryCrackedList
+        ClearContent -Path $TemporaryCrackedList
     
         # Run random rules on the wordlist, limited to 7 days of run time.
         & $HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --generate-rules=1000000 --generate-rules-func-min=5 --runtime=604800 --generate-rules-func-max=25 --debug-mode=1 --debug-file=$RulesLog -m $HashType $HashList $WordList
