@@ -21,7 +21,7 @@ function ClearContent
     param(
         $Path
     )
-    if(Test-Path $FilePath) {
+    if(Test-Path $Path) {
         Clear-Content -Path $Path -Force
     }
     else {
@@ -301,9 +301,6 @@ Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $Crack
 # Run the supplied wordlist with the supplied rules against the hashes.
 Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $WordList" | Out-Host
 
-# Run the supplied wordlist with the supplied rules, squared, against the hashes.
-Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $WordList" | Out-Host
-
 # Do basic rule deviation on all cracked passwords.
 $CrackedPasswords = RunRuleAttacks -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
 
@@ -319,6 +316,9 @@ $CrackedPasswords = RunBruteForceAttack -Mask "?a?a?a?a?a?a?a?a" -Increment
 
 # Do basic rule deviation on all cracked passwords from the previous bruteforce attack.
 $CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
+
+# Run the supplied wordlist with the supplied rules, squared, against the hashes.
+Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $WordList" | Out-Host
 
 # Do mask attacks.
 $CrackedPasswords = RunMaskAttacks -Masks $MaskLists
