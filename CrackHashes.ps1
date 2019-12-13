@@ -2,7 +2,8 @@
 # (or use PowerShell in a Linux environment), here's a PowerShell script for doing work.
 
 $CrackedList = "<Path to where you want any cracked hashes>"
-$HashcatBinary = "<Path to Hashcat binary>"
+$HashcatBinary = "<Name of Hashcat exe>"
+$HashcatBinaryDirectory = "<Name of directory Hashcat exe is in>" 
 $HashList = "<Path to appropriately formatted hashes>"
 $HashType = 1000
 $MaskLists = @("<Mask list paths>", "<Go here>")
@@ -105,10 +106,10 @@ function RunRuleAttacks
     ClearContent -Path $TemporaryCrackedList
     while($CrackedPasswords.Count -gt 0) {
         # Run the cracked passwords with the supplied rules against the hashes.
-        Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $TemporaryWordList" | Out-Host
+        Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $TemporaryWordList" | Out-Host
 
         # Run the cracked passwords with the supplied rules, squared, against the hashes.
-        Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $TemporaryWordList" | Out-Host
+        Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $TemporaryWordList" | Out-Host
 
         # Write any cracked hashes to the main cracked hashes list.
         (Get-Content $TemporaryCrackedList) | Out-File -FilePath $CrackedList -Encoding ascii -Append
@@ -139,7 +140,7 @@ function RunMaskAttacks
     }
     ClearContent -Path $TemporaryCrackedList
     foreach($MaskList in $MaskLists) {
-        Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O --force -m $HashType $HashList $MaskList" | Out-Host
+        Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O --force -m $HashType $HashList $MaskList" | Out-Host
         
         # Write any cracked hashes to the main cracked hashes list.
         (Get-Content $TemporaryCrackedList) | Out-File -FilePath $CrackedList -Encoding ascii -Append
@@ -166,10 +167,10 @@ function RunBruteForceAttack
     }
     ClearContent -Path $TemporaryCrackedList
     if($Increment -eq $true) {    
-        Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --increment --remove -a 3 -O -m $HashType $HashList $Mask" | Out-Host
+        Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --increment --remove -a 3 -O -m $HashType $HashList $Mask" | Out-Host
     }
     else {
-        Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O -m $HashType $HashList $Mask" | Out-Host
+        Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 3 -O -m $HashType $HashList $Mask" | Out-Host
     }
     # Write any cracked hashes to the main cracked hashes list.
     (Get-Content $TemporaryCrackedList) | Out-File -FilePath $CrackedList -Encoding ascii -Append
@@ -198,12 +199,12 @@ function RunPrependAppendAttack
     ClearContent -Path $TemporaryCrackedList
     foreach($WordListPath in $WordListPaths) {
         if($Increment -eq $true) {
-            Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --increment --remove -a 6 -O -m $HashType $HashList $WordListPath $Mask" | Out-Host
-            Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --increment --remove -a 7 -O -m $HashType $HashList $Mask $WordListPath" | Out-Host
+            Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --increment --remove -a 6 -O -m $HashType $HashList $WordListPath $Mask" | Out-Host
+            Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --increment --remove -a 7 -O -m $HashType $HashList $Mask $WordListPath" | Out-Host
         }
         else {
-            Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 6 -O -m $HashType $HashList $WordListPath $Mask" | Out-Host
-            Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 7 -O -m $HashType $HashList $Mask $WordListPath" | Out-Host
+            Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 6 -O -m $HashType $HashList $WordListPath $Mask" | Out-Host
+            Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 7 -O -m $HashType $HashList $Mask $WordListPath" | Out-Host
         }
         
         # Write any cracked hashes to the main cracked hashes list.
@@ -235,10 +236,10 @@ function RunRandomRules
         ClearContent -Path $TemporaryCrackedList
     
         # Run random rules on the wordlist, limited to 7 days of run time.
-        Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --generate-rules=1000000 --generate-rules-func-min=5 --runtime=604800 --generate-rules-func-max=25 --debug-mode=1 --debug-file=$RulesLog -m $HashType $HashList $WordList" | Out-Host
+        Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --generate-rules=1000000 --generate-rules-func-min=5 --runtime=604800 --generate-rules-func-max=25 --debug-mode=1 --debug-file=$RulesLog -m $HashType $HashList $WordList" | Out-Host
 
         # Run random rules on the cracked passwords, limited to 7 days of run time.
-        Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --generate-rules=1000000 --generate-rules-func-min=5 --runtime=604800 --generate-rules-func-max=25 --debug-mode=1 --debug-file=$RulesLog -m $HashType $HashList $TemporaryWordList" | Out-Host
+        Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --generate-rules=1000000 --generate-rules-func-min=5 --runtime=604800 --generate-rules-func-max=25 --debug-mode=1 --debug-file=$RulesLog -m $HashType $HashList $TemporaryWordList" | Out-Host
         
         try {
             $HashesCracked += (Get-CrackedPasswords -CrackedFile $TemporaryCrackedList).Count
@@ -266,7 +267,7 @@ function RunPrinceProcessorAttack
     Invoke-Expression "$PrinceProcessorBinary --pw-max=16 --pw-min=8 --output-file=$PrinceProcessorOutputFile $WordListPath" | Out-Host
 
     # Run straight wordlist against the hashes.
-    Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O -m $HashType $HashList $PrinceProcessorOutputFile" | Out-Host
+    Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O -m $HashType $HashList $PrinceProcessorOutputFile" | Out-Host
 
     # Write any cracked hashes to the main cracked hashes list.
     (Get-Content $TemporaryCrackedList) | Out-File -FilePath $CrackedList -Encoding ascii -Append
@@ -278,7 +279,7 @@ function RunPrinceProcessorAttack
     ClearContent -Path $TemporaryCrackedList
 
     # Run the supplied wordlist with the supplied rules against the hashes.
-    Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $PrinceProcessorOutputFile" | Out-Host
+    Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $PrinceProcessorOutputFile" | Out-Host
 
     # Write any cracked hashes to the main cracked hashes list.
     (Get-Content $TemporaryCrackedList) | Out-File -FilePath $CrackedList -Encoding ascii -Append
@@ -295,11 +296,13 @@ function RunPrinceProcessorAttack
     return $CrackedPasswords
 }
 
+cd $HashcatBinaryDirectory
+
 # Run straight wordlist against the hashes.
-Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O -m $HashType $HashList $WordList" | Out-Host
+Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O -m $HashType $HashList $WordList" | Out-Host
 
 # Run the supplied wordlist with the supplied rules against the hashes.
-Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $WordList" | Out-Host
+Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $WordList" | Out-Host
 
 # Do basic rule deviation on all cracked passwords.
 $CrackedPasswords = RunRuleAttacks -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
@@ -318,7 +321,7 @@ $CrackedPasswords = RunBruteForceAttack -Mask "?a?a?a?a?a?a?a?a" -Increment
 $CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
 
 # Run the supplied wordlist with the supplied rules, squared, against the hashes.
-Invoke-Expression "$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $WordList" | Out-Host
+Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $WordList" | Out-Host
 
 # Do mask attacks.
 $CrackedPasswords = RunMaskAttacks -Masks $MaskLists
