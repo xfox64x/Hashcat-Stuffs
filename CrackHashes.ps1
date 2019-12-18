@@ -91,6 +91,8 @@ function RunRuleAttacks
         $Words = @()
     )
     $CrackedPasswords = @()
+    
+    # If no words supplied, return an empty array.
     if($Words.Count -eq 0) {
         return $CrackedPasswords
     }
@@ -103,8 +105,19 @@ function RunRuleAttacks
     # script after the first hashcat command heas finished, where any results would only exist in the temporary cracked 
     # list. Just be aware of this or else you might end up overwriting some good cracks.
     
+    # Clear out the the temporary cracked hashes file.
     ClearContent -Path $TemporaryCrackedList
-    while($CrackedPasswords.Count -gt 0) {
+    
+    # Create an array to hold any newly cracked plaintext passwords, post running the rules.
+    $TemporaryCrackedContent = @()
+    
+    # Declare a variable to establish the first iteration through the while loop.
+    $FirstRun = $true
+    
+    # While this is either the first time through the loop or there are new plaintext values to run the rules on:
+    while($FirstRun -eq $true -or $TemporaryCrackedContent.Count -gt 0) {
+        $FirstRun = $false
+    
         # Run the cracked passwords with the supplied rules against the hashes.
         Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $TemporaryCrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $TemporaryWordList" | Out-Host
 
@@ -117,6 +130,7 @@ function RunRuleAttacks
         # Get a list of the cracked passwords from the previous hashcat run.
         $TemporaryCrackedContent = Get-CrackedPasswords -CrackedFile $TemporaryCrackedList
 
+        # Append all plaintext values cracked in this function, to show progress, etc.
         $CrackedPasswords += $TemporaryCrackedContent
 
         # Writes out cracked passwords to the wordlist, clearing previous content.
@@ -305,20 +319,20 @@ Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $Cra
 Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -m $HashType $HashList $WordList" | Out-Host
 
 # Do basic rule deviation on all cracked passwords.
-$CrackedPasswords = RunRuleAttacks -CrackedPasswords (Get-CrackedPasswords -CrackedFile $CrackedList)
+$CrackedPasswords = RunRuleAttacks -Words (Get-CrackedPasswords -CrackedFile $CrackedList)
 
 # Do append/prepend attack on word list and cracked passwords.
 (Get-CrackedPasswords -CrackedFile $CrackedList) | Out-File -FilePath $TemporaryWordList -Encoding ascii
 $CrackedPasswords = RunPrependAppendAttack -Mask "?a?a?a?a?a" -Increment -WordListPaths @($WordList, $TemporaryWordList)
 
 # Do basic rule deviation on all cracked passwords from the previous append/prepend attacks.
-$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
+$CrackedPasswords = RunRuleAttacks -Words $CrackedPasswords
 
 # Do incremental bruteforce of the 8 character keyspace.
 $CrackedPasswords = RunBruteForceAttack -Mask "?a?a?a?a?a?a?a?a" -Increment
 
 # Do basic rule deviation on all cracked passwords from the previous bruteforce attack.
-$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
+$CrackedPasswords = RunRuleAttacks -Words $CrackedPasswords
 
 # Run the supplied wordlist with the supplied rules, squared, against the hashes.
 Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $CrackedList --outfile-format=3 --potfile-disable --remove -a 0 -O --debug-mode=1 --debug-file=$RulesLog -r $RulesList -r $RulesList -m $HashType $HashList $WordList" | Out-Host
@@ -327,7 +341,7 @@ Invoke-Expression "./$HashcatBinary --status -w 3 --session $SessionName -o $Cra
 $CrackedPasswords = RunMaskAttacks -Masks $MaskLists
 
 # Do basic rule deviation on all cracked passwords from the previous mask attacks.
-$CrackedPasswords = RunRuleAttacks -CrackedPasswords $CrackedPasswords
+$CrackedPasswords = RunRuleAttacks -Words $CrackedPasswords
 
 # Run the PrinceProcessor on the cracked passwords, and then run basic and rules-based attacks.
 (Get-CrackedPasswords -CrackedFile $CrackedList) | Out-File -FilePath $TemporaryWordList -Encoding ascii
