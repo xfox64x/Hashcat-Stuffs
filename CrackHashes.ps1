@@ -176,7 +176,7 @@ function RunBruteForceAttack
         [switch] $Increment = $false
     )
     $CrackedPasswords = @()
-    if($Masks.Count -eq 0) {
+    if($Mask.Length -eq 0) {
         return $CrackedPasswords
     }
     ClearContent -Path $TemporaryCrackedList
